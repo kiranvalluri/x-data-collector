@@ -1,0 +1,38 @@
+{
+	"exchange": [
+		{
+		"exchangeName": "GDAX",
+		"service": [{
+			"exchangeName": "GDAX",
+			"name": "GDAX_Ticker_BTC_USD",
+			"apiType": "REST",
+			"url": "https://api.gdax.com/products/BTC-USD/ticker",
+			"timeToRefresh": "10",
+			"productSource":"BTC",
+			"productTarget":"USD",
+			"serviceType": "Ticker",
+			"input": [{
+				"paramName": "none",
+				"paramValue": "none"
+			}]
+		}]
+	},
+	{
+		"exchangeName": "CEX",
+		"service": [{
+			"exchangeName": "CEX",
+			"name": "CEX_Ticker_BTC_USD",
+			"apiType": "REST",
+			"url": "https://cex.io/api/ticker/BTC/USD",
+			"timeToRefresh": "10",
+			"productSource":"BTC",
+			"productTarget":"USD",
+			"serviceType": "Ticker",
+			"input": [{
+				"paramName": "none",
+				"paramValue": "none"
+			}]
+		}]
+	}
+	]
+}

@@ -24,10 +24,9 @@ public class DataCollectorApplication {
 
 		DataCollectorExtension ext = context.getBean(DataCollectorExtension.class);
 
-		ActorRef supervisor = system.actorOf(ext.props("supervisor"));
-		System.out.println(supervisor);
-
-		supervisor.tell("GDAX", supervisor);
+		ActorRef supervisor = system.actorOf(ext.props("dataCollectorRepositoryActor"));
+		
+		supervisor.tell("Start", supervisor);
 
 	}
 

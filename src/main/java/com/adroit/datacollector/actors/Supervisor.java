@@ -25,7 +25,7 @@ public class Supervisor extends AbstractActor {
 		return receiveBuilder().match(String.class, s -> {
 			log.info("Starting Data Collector... {}", s);
 
-			ActorRef dataCollector = getContext().getSystem().actorOf(dataCollectorExtension.props("dataCollector"));
+			ActorRef dataCollector = getContext().getSystem().actorOf(dataCollectorExtension.props("dataCollectorRepositoryActor"));
 
 			// TODO Sending the exchange configuration is pending. 
 			// TODO Once the Config loader is completed change the hard coded logic

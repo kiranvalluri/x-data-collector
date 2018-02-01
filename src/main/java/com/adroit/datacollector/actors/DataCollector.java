@@ -1,16 +1,19 @@
 package com.adroit.datacollector.actors;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
-import com.adroit.datacollector.message.publisher.MessagePublisher;
+import com.adroit.datacollector.extension.DataCollectorExtension;
 import com.adroit.datacollector.vo.ExchangeConfig;
+import com.adroit.datacollector.vo.ServiceConfiguration;
+import com.adroit.datacollector.vo.TickerMessageEnvelope;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import akka.actor.AbstractActor;
+import akka.actor.ActorRef;
 import akka.actor.Scheduler;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
@@ -20,7 +23,6 @@ import akka.http.javadsl.model.HttpRequest;
 import akka.http.javadsl.model.HttpResponse;
 import akka.stream.ActorMaterializer;
 import akka.util.ByteString;
-import scala.concurrent.duration.Duration;
 
 @Component
 @Scope("prototype")
@@ -31,7 +33,10 @@ public class DataCollector extends AbstractActor {
 	ActorMaterializer materializer = null;
 	
 	@Autowired
-	MessagePublisher messagePublisher;
+	private DataCollectorExtension dataCollectorExtension;
+	
+//	@Autowired
+//	MessagePublisher messagePublisher;
 	
 	@Override
 	public void preStart() throws Exception {
@@ -46,12 +51,7 @@ public class DataCollector extends AbstractActor {
 	public Receive createReceive() {
 		return receiveBuilder().match(String.class, s -> {
 			log.info("Data Collecting is Started: {}", s);
-			ExchangeConfig config = new ExchangeConfig();
-			config.setExchnageName("GDAX");
-			scheduler.schedule(Duration.Zero(), Duration.create(10, TimeUnit.SECONDS), this.getSelf(), config,
-					getContext().getSystem().dispatcher(), null);
-
-		}).match(ExchangeConfig.class, config -> {
+		}).match(ServiceConfiguration.class, config -> {
 			log.info("Received message from Data Collector to fetch Ticker data: {}", config);
 			
 			// TODO Based on the type of the service call either handleRestApi or handleWebHookApi
@@ -63,25 +63,32 @@ public class DataCollector extends AbstractActor {
 		}).build();
 	}
 
-	// Calls the REST service and post the response to Redis
-	private void handleRestApi(ExchangeConfig config) {
+	// Call the REST service and post the response to Redis
+	private void handleRestApi(ServiceConfiguration config) {
 		try {
-			log.info("Calling GDAX Ticker API: ");
-			
-			// TODO get the servie details from the configuration
+			log.info("Calling Ticker API for the exchange: "+config);
 			
 			CompletableFuture<HttpResponse> response = (CompletableFuture<HttpResponse>) Http
 					.get(getContext().getSystem())
-					.singleRequest(HttpRequest.create("https://api.gdax.com/products/BTC-USD/ticker"), materializer);
+					.singleRequest(HttpRequest.create(config.getUrl()), materializer);
 			HttpResponse httpResponse = response.get();
 			HttpEntity.Strict result = httpResponse.entity().toStrict(1000, materializer).toCompletableFuture().get();
 
 			ByteString byteString = result.getData();
-			System.out.println(byteString.utf8String());
-			//Jedis redisClient = new Jedis("localhost", 6379);
-			//redisClient.set("GDAX_BTC_USD", byteString.utf8String());
-			//redisClient.close();
-			messagePublisher.publish(byteString.utf8String());
+			log.info(byteString.utf8String());
+			ActorRef messagePublishActor = getContext().getSystem().actorOf(dataCollectorExtension.props("messagePublishActor"));
+			TickerMessageEnvelope envelope = new TickerMessageEnvelope();
+			
+			envelope.setMessage(byteString.utf8String());
+			envelope.setExchangeName(config.getExchangeName());
+			envelope.setSourceProduct(config.getProductSource());
+			envelope.setTargetProduct(config.getProductTarget());
+			
+			ObjectMapper mapper = new ObjectMapper();			
+			
+			messagePublishActor.tell(mapper.writeValueAsString(envelope), sender());
+			
+			
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

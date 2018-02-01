@@ -28,4 +28,16 @@ public class DataCollectorExtension implements Extension {
     	Props pros = Props.create(DataCollectorProducer.class,applicationContext,actorBeanName);       
     	return (pros);
     }
+    
+    public Props props(String actorBeanClass,String actorBeanName) {
+    	Class<?> cla = DataCollectorProducer.class;
+    			try {
+    				cla = Class.forName(actorBeanClass);
+				} catch (ClassNotFoundException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+    	Props pros = Props.create(cla,applicationContext,actorBeanClass);       
+    	return (pros);
+    }
 }
